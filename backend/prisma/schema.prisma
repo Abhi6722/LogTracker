@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
+  logs     Log[]
+
+  @@map("users")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  apiKey      String   @unique
+  enabled     Boolean  @default(true)
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  owner    User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  logs     Log[]
+  logStats LogStats?
+
+  settings Json @default("{\"logLevels\":[\"error\",\"warn\",\"info\",\"debug\"],\"retentionDays\":30,\"maxLogsPerMinute\":1000}")
+
+  @@map("projects")
+}
+
+model Log {
+  id        String   @id @default(cuid())
+  level     String
+  message   String
+  timestamp DateTime
+  source    String?
+  requestId String?
+  headers   Json?
+  method    String?
+  query     Json?
+  url       String?
+  metadata  Json?
+  projectId String
+  userId    String
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("logs")
+}
+
+model LogStats {
+  id          String   @id @default(cuid())
+  projectId   String   @unique
+  errorCount  Int      @default(0)
+  warnCount   Int      @default(0)
+  infoCount   Int      @default(0)
+  debugCount  Int      @default(0)
+  totalCount  Int      @default(0)
+  lastUpdated DateTime @default(now())
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("log_stats")
+}
